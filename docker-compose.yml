@@ -1,0 +1,24 @@
+---
+services:
+  tidal-playlists:
+    build: .
+    image: ghcr.io/nickcampbell18/tidal-collaborative-playlists:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - playlist-data:/data
+    environment:
+      # TIDAL API credentials - get these from https://developer.tidal.com/
+      - TIDAL_CLIENT_ID=your_client_id_here
+      - TIDAL_CLIENT_SECRET=your_client_secret_here
+      - TIDAL_REDIRECT_URI=http://localhost:3000/auth/callback
+
+      # Cookie secret - generate with: openssl rand -hex 32
+      - COOKIE_SECRET=your_64_character_hex_string_here
+
+      # Base URL - change this to your public domain in production
+      - BASE_URL=http://localhost:3000
+    restart: unless-stopped
+
+volumes:
+  playlist-data:

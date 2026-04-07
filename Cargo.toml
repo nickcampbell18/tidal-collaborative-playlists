@@ -1,0 +1,24 @@
+[package]
+name = "tidal-collaborative-playlists"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = { version = "0.7", features = ["macros"] }
+axum-extra = { version = "0.9", features = ["cookie-private"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.5", features = ["trace"] }
+tower-livereload = "0.9"
+sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio-rustls", "time"] }
+maud = { version = "0.26", features = ["axum"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+oauth2 = "4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dotenvy = "0.15"
+anyhow = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+time = { version = "0.3", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
