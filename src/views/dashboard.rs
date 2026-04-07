@@ -9,6 +9,7 @@ pub struct PlaylistRow {
     pub title: String,
     pub item_count: u32,
     pub shared: Option<SharedInfo>,
+    pub description: Option<String>,
 }
 
 pub fn page(rows: &[PlaylistRow], base_url: &str, q: Option<&str>, sort: Option<&str>) -> Markup {
@@ -69,6 +70,7 @@ pub fn playlist_row(row: &PlaylistRow, base_url: &str) -> Markup {
                      hx-swap="outerHTML" {
                     input type="hidden" name="name" value=(row.title);
                     input type="hidden" name="item_count" value=(row.item_count);
+                    input type="hidden" name="description" value=(row.description.as_deref().unwrap_or(""));
                     @if is_active {
                         button class="toggle-switch active" type="submit" title="Leave" {}
                     } @else {
@@ -90,6 +92,7 @@ pub fn playlist_row(row: &PlaylistRow, base_url: &str) -> Markup {
                             input type="hidden" name="tidal_id" value=(row.tidal_id);
                             input type="hidden" name="name" value=(row.title);
                             input type="hidden" name="item_count" value=(row.item_count);
+                            input type="hidden" name="description" value=(row.description.as_deref().unwrap_or(""));
                             button class="sync-link" type="submit" { "Sync now" }
                         }
                     }

@@ -131,16 +131,14 @@ async fn index(
                 Ok(t) => t,
                 Err(_) => return views::home::page().into_response(),
             };
-            let playlists =
-                match auth::tidal::fetch_playlists(&state.http, &access_token).await {
-                    Ok(p) => p,
-                    Err(e) => return e.into_response(),
-                };
-            let shared_map =
-                match db::playlists::get_shared_by_user(&state.db, &user_id).await {
-                    Ok(m) => m,
-                    Err(e) => return error::AppError::Anyhow(e).into_response(),
-                };
+            let playlists = match auth::tidal::fetch_playlists(&state.http, &access_token).await {
+                Ok(p) => p,
+                Err(e) => return e.into_response(),
+            };
+            let shared_map = match db::playlists::get_shared_by_user(&state.db, &user_id).await {
+                Ok(m) => m,
+                Err(e) => return error::AppError::Anyhow(e).into_response(),
+            };
 
             let mut rows: Vec<PlaylistRow> = playlists
                 .into_iter()
@@ -149,6 +147,7 @@ async fn index(
                     tidal_id: p.id,
                     title: p.title,
                     item_count: p.item_count,
+                    description: p.description.clone(),
                 })
                 .collect();
 
@@ -158,12 +157,20 @@ async fn index(
             }
 
             match params.sort.as_deref() {
-                Some("name") => rows.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase())),
+                Some("name") => {
+                    rows.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()))
+                }
                 Some("count") => rows.sort_by(|a, b| b.item_count.cmp(&a.item_count)),
                 _ => {} // "modified" or default: preserve TIDAL API order (last modified desc)
             }
 
-            views::dashboard::page(&rows, &state.config.base_url, params.q.as_deref(), params.sort.as_deref()).into_response()
+            views::dashboard::page(
+                &rows,
+                &state.config.base_url,
+                params.q.as_deref(),
+                params.sort.as_deref(),
+            )
+            .into_response()
         }
     }
 }
@@ -172,6 +179,7 @@ async fn index(
 struct PlaylistForm {
     name: String,
     item_count: u32,
+    description: Option<String>,
 }
 
 async fn share_playlist(
@@ -189,7 +197,15 @@ async fn share_playlist(
         Err(e) => return e.into_response(),
     };
 
-    let shared = match db::playlists::share(&state.db, &tidal_id, &user_id, &body.name).await {
+    let shared = match db::playlists::share(
+        &state.db,
+        &tidal_id,
+        &user_id,
+        &body.name,
+        body.description.as_deref(),
+    )
+    .await
+    {
         Ok(info) => Some(info),
         Err(e) => return error::AppError::Anyhow(e).into_response(),
     };
@@ -211,7 +227,13 @@ async fn share_playlist(
         }
     }
 
-    let row = PlaylistRow { tidal_id, title: body.name, item_count: body.item_count, shared };
+    let row = PlaylistRow {
+        tidal_id,
+        title: body.name,
+        item_count: body.item_count,
+        description: body.description.clone(),
+        shared,
+    };
     views::dashboard::playlist_row(&row, &state.config.base_url).into_response()
 }
 
@@ -237,7 +259,13 @@ async fn unshare_playlist(
         Err(e) => return error::AppError::Anyhow(e).into_response(),
     };
 
-    let row = PlaylistRow { tidal_id, title: body.name, item_count: body.item_count, shared: new_shared };
+    let row = PlaylistRow {
+        tidal_id,
+        title: body.name,
+        item_count: body.item_count,
+        description: body.description.clone(),
+        shared: new_shared,
+    };
     views::dashboard::playlist_row(&row, &state.config.base_url).into_response()
 }
 
@@ -265,7 +293,13 @@ async fn leave_playlist(
         tracing::warn!("failed to delete TIDAL playlist {tidal_id} after leave: {e}");
     }
 
-    let row = PlaylistRow { tidal_id, title: body.name, item_count: body.item_count, shared: None };
+    let row = PlaylistRow {
+        tidal_id,
+        title: body.name,
+        item_count: body.item_count,
+        description: body.description.clone(),
+        shared: None,
+    };
     views::dashboard::playlist_row(&row, &state.config.base_url).into_response()
 }
 
@@ -274,6 +308,7 @@ struct SyncForm {
     tidal_id: String,
     name: String,
     item_count: u32,
+    description: Option<String>,
 }
 
 async fn sync_playlist(
@@ -299,6 +334,7 @@ async fn sync_playlist(
         tidal_id: body.tidal_id,
         title: body.name,
         item_count: body.item_count,
+        description: body.description.clone(),
         shared,
     };
     views::dashboard::playlist_row(&row, &state.config.base_url).into_response()
@@ -315,12 +351,19 @@ async fn join_page(
     };
 
     // Ensure the user record exists (they may have been removed somehow).
-    if db::users::get(&state.db, &user_id).await.ok().flatten().is_none() {
+    if db::users::get(&state.db, &user_id)
+        .await
+        .ok()
+        .flatten()
+        .is_none()
+    {
         return axum::response::Redirect::to("/auth/login").into_response();
     }
 
     match db::playlists::get_by_id(&state.db, &playlist_id).await {
-        Ok(Some(playlist)) => views::join::page(&playlist.name).into_response(),
+        Ok(Some(playlist)) => {
+            views::join::page(&playlist.name, playlist.description.as_deref()).into_response()
+        }
         Ok(None) => error::AppError::TidalApi("Invite link not found".into()).into_response(),
         Err(e) => error::AppError::Anyhow(e).into_response(),
     }
@@ -329,6 +372,7 @@ async fn join_page(
 #[derive(serde::Deserialize)]
 struct JoinForm {
     name: String,
+    description: Option<String>,
 }
 
 async fn join_playlist(
@@ -348,17 +392,42 @@ async fn join_playlist(
 
     // Verify the playlist exists.
     match db::playlists::get_by_id(&state.db, &playlist_id).await {
-        Ok(None) => return error::AppError::TidalApi("Invite link not found".into()).into_response(),
+        Ok(None) => {
+            return error::AppError::TidalApi("Invite link not found".into()).into_response();
+        }
         Err(e) => return error::AppError::Anyhow(e).into_response(),
         Ok(Some(_)) => {}
     }
 
     // Create a new TIDAL playlist in the joiner's account.
-    let tidal_playlist_id =
-        match auth::tidal::create_playlist(&state.http, &access_token, &body.name).await {
-            Ok(id) => id,
-            Err(e) => return e.into_response(),
-        };
+    let tidal_playlist_id = match auth::tidal::create_playlist(
+        &state.http,
+        &access_token,
+        &body.name,
+        &if let Some(ref existing_desc) = body.description {
+            if existing_desc.is_empty() {
+                format!(
+                    "Managed by Tidal Collaborative Playlists ({})",
+                    state.config.base_url
+                )
+            } else {
+                format!(
+                    "{}\n\nManaged by Tidal Collaborative Playlists ({})",
+                    existing_desc, state.config.base_url
+                )
+            }
+        } else {
+            format!(
+                "Managed by Tidal Collaborative Playlists ({})",
+                state.config.base_url
+            )
+        },
+    )
+    .await
+    {
+        Ok(id) => id,
+        Err(e) => return e.into_response(),
+    };
 
     // Pre-populate the new playlist with the canonical tracks so the first sync
     // doesn't interpret an empty playlist as "the member deleted everything".
@@ -377,8 +446,7 @@ async fn join_playlist(
     }
 
     // Record the membership.
-    if let Err(e) =
-        db::playlists::join(&state.db, &playlist_id, &user_id, &tidal_playlist_id).await
+    if let Err(e) = db::playlists::join(&state.db, &playlist_id, &user_id, &tidal_playlist_id).await
     {
         return error::AppError::Anyhow(e).into_response();
     }

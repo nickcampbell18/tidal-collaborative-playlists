@@ -1,7 +1,4 @@
-use oauth2::{
-    AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl,
-    basic::BasicClient,
-};
+use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl, basic::BasicClient};
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -117,8 +114,10 @@ pub async fn fetch_playlists(http: &Client, access_token: &str) -> Result<Vec<Pl
             item_count: d.attributes.item_count.unwrap_or(0),
         }));
 
-
-        cursor = parsed.links.and_then(|l| l.meta).and_then(|m| m.next_cursor);
+        cursor = parsed
+            .links
+            .and_then(|l| l.meta)
+            .and_then(|m| m.next_cursor);
         if cursor.is_none() {
             break;
         }
@@ -128,13 +127,18 @@ pub async fn fetch_playlists(http: &Client, access_token: &str) -> Result<Vec<Pl
 }
 
 /// Create a new TIDAL playlist and return its ID.
-pub async fn create_playlist(http: &Client, access_token: &str, name: &str) -> Result<String, AppError> {
+pub async fn create_playlist(
+    http: &Client,
+    access_token: &str,
+    name: &str,
+    description: &str,
+) -> Result<String, AppError> {
     let body = serde_json::json!({
         "data": {
             "type": "playlists",
             "attributes": {
                 "name": name,
-                "description": ""
+                "description": description
             }
         }
     });
@@ -168,9 +172,15 @@ pub async fn create_playlist(http: &Client, access_token: &str, name: &str) -> R
 }
 
 /// Delete a TIDAL playlist. Returns Ok(()) even if the playlist no longer exists (404).
-pub async fn delete_playlist(http: &Client, access_token: &str, tidal_playlist_id: &str) -> Result<(), AppError> {
+pub async fn delete_playlist(
+    http: &Client,
+    access_token: &str,
+    tidal_playlist_id: &str,
+) -> Result<(), AppError> {
     let resp = http
-        .delete(format!("https://openapi.tidal.com/v2/playlists/{tidal_playlist_id}"))
+        .delete(format!(
+            "https://openapi.tidal.com/v2/playlists/{tidal_playlist_id}"
+        ))
         .bearer_auth(access_token)
         .header("Accept", "application/vnd.api+json")
         .send()

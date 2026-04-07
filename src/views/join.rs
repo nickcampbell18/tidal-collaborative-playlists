@@ -2,7 +2,7 @@ use maud::{Markup, html};
 
 use super::layout;
 
-pub fn page(playlist_name: &str) -> Markup {
+pub fn page(playlist_name: &str, description: Option<&str>) -> Markup {
     layout(
         "Join Playlist",
         html! {
@@ -16,6 +16,7 @@ pub fn page(playlist_name: &str) -> Markup {
                         value=(playlist_name)
                         style="width:100%;padding:0.6rem 0.75rem;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:6px;color:#f0f0f0;font-size:1rem;margin-bottom:1rem;"
                         autofocus;
+                    input type="hidden" name="description" value=(description.unwrap_or(""));
                     button type="submit" class="btn btn-tidal" style="width:100%;" {
                         "Join playlist"
                     }

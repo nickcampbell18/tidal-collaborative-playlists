@@ -8,6 +8,7 @@ pub struct DbPlaylist {
     pub id: String,
     pub name: String,
     pub owner_user_id: String,
+    pub description: Option<String>,
 }
 
 pub async fn get_by_id(pool: &SqlitePool, playlist_id: &str) -> anyhow::Result<Option<DbPlaylist>> {
@@ -16,18 +17,21 @@ pub async fn get_by_id(pool: &SqlitePool, playlist_id: &str) -> anyhow::Result<O
         id: String,
         name: String,
         owner_user_id: String,
+        description: Option<String>,
     }
 
-    let row =
-        sqlx::query_as::<_, Row>("SELECT id, name, owner_user_id FROM playlists WHERE id = ?")
-            .bind(playlist_id)
-            .fetch_optional(pool)
-            .await?;
+    let row = sqlx::query_as::<_, Row>(
+        "SELECT id, name, owner_user_id, description FROM playlists WHERE id = ?",
+    )
+    .bind(playlist_id)
+    .fetch_optional(pool)
+    .await?;
 
     Ok(row.map(|r| DbPlaylist {
         id: r.id,
         name: r.name,
         owner_user_id: r.owner_user_id,
+        description: r.description,
     }))
 }
 
@@ -125,14 +129,16 @@ pub async fn share(
     tidal_playlist_id: &str,
     owner_user_id: &str,
     name: &str,
+    description: Option<&str>,
 ) -> anyhow::Result<SharedInfo> {
     let playlist_id = Uuid::new_v4().to_string();
     let member_id = Uuid::new_v4().to_string();
 
-    sqlx::query("INSERT INTO playlists (id, owner_user_id, name) VALUES (?, ?, ?)")
+    sqlx::query("INSERT INTO playlists (id, owner_user_id, name, description) VALUES (?, ?, ?, ?)")
         .bind(&playlist_id)
         .bind(owner_user_id)
         .bind(name)
+        .bind(description)
         .execute(pool)
         .await?;
 
