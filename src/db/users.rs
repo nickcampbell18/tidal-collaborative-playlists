@@ -4,6 +4,7 @@ use time::format_description::well_known::Rfc3339;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct User {
+    #[allow(dead_code)]
     pub id: String,
     pub access_token: String,
     pub refresh_token: String,
@@ -18,8 +19,7 @@ pub async fn upsert(
     token_expires_at: Option<OffsetDateTime>,
 ) -> anyhow::Result<()> {
     let now = OffsetDateTime::now_utc().format(&Rfc3339)?;
-    let expires = token_expires_at
-        .and_then(|t| t.format(&Rfc3339).ok());
+    let expires = token_expires_at.and_then(|t| t.format(&Rfc3339).ok());
 
     sqlx::query(
         r#"

@@ -18,8 +18,7 @@ impl Config {
             tidal_client_secret: required("TIDAL_CLIENT_SECRET")?,
             tidal_redirect_uri: required("TIDAL_REDIRECT_URI")?,
             cookie_secret: hex_bytes("COOKIE_SECRET")?,
-            base_url: env::var("BASE_URL")
-                .unwrap_or_else(|_| "http://localhost:3000".to_string()),
+            base_url: env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string()),
         })
     }
 }

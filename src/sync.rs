@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use crate::{AppState, auth, db, error::AppError};
 
 struct MemberState {
+    #[allow(dead_code)]
     user_id: String,
     tidal_playlist_id: String,
     access_token: String,
@@ -31,11 +32,14 @@ pub async fn run(state: &AppState, playlist_id: &str) -> Result<(), AppError> {
     let mut member_states: Vec<MemberState> = Vec::new();
     for member in &members {
         let access_token = auth::ensure_fresh_token(state, &member.user_id).await?;
-        let tracks: HashSet<String> =
-            auth::tidal::fetch_playlist_track_ids(&state.http, &access_token, &member.tidal_playlist_id)
-                .await?
-                .into_iter()
-                .collect();
+        let tracks: HashSet<String> = auth::tidal::fetch_playlist_track_ids(
+            &state.http,
+            &access_token,
+            &member.tidal_playlist_id,
+        )
+        .await?
+        .into_iter()
+        .collect();
         member_states.push(MemberState {
             user_id: member.user_id.clone(),
             tidal_playlist_id: member.tidal_playlist_id.clone(),

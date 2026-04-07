@@ -1,7 +1,10 @@
 pub mod playlists;
 pub mod users;
 
-use sqlx::{SqlitePool, sqlite::{SqliteConnectOptions, SqlitePoolOptions}};
+use sqlx::{
+    SqlitePool,
+    sqlite::{SqliteConnectOptions, SqlitePoolOptions},
+};
 use std::str::FromStr;
 
 pub async fn connect(database_url: &str) -> anyhow::Result<SqlitePool> {

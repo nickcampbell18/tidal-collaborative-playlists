@@ -33,9 +33,7 @@ impl IntoResponse for AppError {
         tracing::error!("{self}");
 
         let status = match &self {
-            AppError::OAuthStateMismatch | AppError::MissingOAuthCookies => {
-                StatusCode::BAD_REQUEST
-            }
+            AppError::OAuthStateMismatch | AppError::MissingOAuthCookies => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

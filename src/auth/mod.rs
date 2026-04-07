@@ -141,13 +141,17 @@ pub fn current_user_id(jar: &PrivateCookieJar) -> Option<String> {
 
 /// Returns a valid access token for the user, refreshing it if it expires within 5 minutes.
 /// Returns an error if the user doesn't exist in the DB or the refresh fails.
-pub async fn ensure_fresh_token(state: &crate::AppState, user_id: &str) -> Result<String, AppError> {
+pub async fn ensure_fresh_token(
+    state: &crate::AppState,
+    user_id: &str,
+) -> Result<String, AppError> {
     let user = db::users::get(&state.db, user_id)
         .await
         .map_err(AppError::Anyhow)?
         .ok_or_else(|| AppError::TidalApi("session expired".into()))?;
 
-    let expires_soon = user.token_expires_at
+    let expires_soon = user
+        .token_expires_at
         .as_deref()
         .map(|s| {
             // If we can't parse the expiry (e.g. old format), assume it might be expired.
@@ -175,11 +179,19 @@ pub async fn ensure_fresh_token(state: &crate::AppState, user_id: &str) -> Resul
         .refresh_token()
         .map(|t| t.secret().clone())
         .unwrap_or(user.refresh_token);
-    let expires_at = new_token.expires_in().map(|d| OffsetDateTime::now_utc() + d);
+    let expires_at = new_token
+        .expires_in()
+        .map(|d| OffsetDateTime::now_utc() + d);
 
-    db::users::upsert(&state.db, user_id, &access_token, &refresh_token, expires_at)
-        .await
-        .map_err(AppError::Anyhow)?;
+    db::users::upsert(
+        &state.db,
+        user_id,
+        &access_token,
+        &refresh_token,
+        expires_at,
+    )
+    .await
+    .map_err(AppError::Anyhow)?;
 
     Ok(access_token)
 }

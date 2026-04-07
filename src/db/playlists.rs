@@ -5,8 +5,10 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct DbPlaylist {
+    #[allow(dead_code)]
     pub id: String,
     pub name: String,
+    #[allow(dead_code)]
     pub owner_user_id: String,
     pub description: Option<String>,
 }
@@ -61,6 +63,7 @@ pub struct SharedInfo {
     pub playlist_id: String,
     pub member_count: i64,
     pub is_owner: bool,
+    #[allow(dead_code)]
     pub last_synced_at: Option<String>,
 }
 
